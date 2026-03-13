@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CLI-Anything on Windows</title>
+  <style>
+    /* ==========================================================================
+       VARIABLES & RESET
+       ========================================================================== */
+    :root {
+      --bg-main: #000000;
+      --bg-surface: #0a0a0a;
+      --bg-card: rgba(20, 20, 20, 0.6);
+      --bg-card-hover: rgba(30, 30, 30, 0.8);
+      --text-main: #ededed;
+      --text-muted: #a1a1aa;
+      --accent-1: #0070f3; /* Vercel Blue */
+      --accent-2: #7928ca; /* Vercel Purple */
+      --accent-3: #38bdf8; /* Cyan */
+      --border-light: rgba(255, 255, 255, 0.08);
+      --border-hover: rgba(255, 255, 255, 0.15);
+      --gradient-glow: linear-gradient(135deg, var(--accent-1), var(--accent-2));
+      --radius-sm: 6px;
+      --radius-md: 12px;
+      --radius-lg: 24px;
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      --font-mono: ui-monospace, SFMono-Regular, "JetBrains Mono", Menlo, Monaco, Consolas, monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      line-height: 1.6;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    ::selection {
+      background: var(--accent-2);
+      color: white;
+    }
+
+    /* Background Effects */
+    .bg-effects {
+      position: fixed;
+      top: 0; left: 0; width: 100vw; height: 100vh;
+      z-index: -1;
+      pointer-events: none;
+      overflow: hidden;
+    }
+    .bg-effects::before {
+      content: "";
+      position: absolute;
+      top: -20%; left: -10%;
+      width: 50vw; height: 50vw;
+      background: radial-gradient(circle, rgba(121, 40, 202, 0.15) 0%, transparent 60%);
+      filter: blur(80px);
+    }
+    .bg-effects::after {
+      content: "";
+      position: absolute;
+      bottom: -20%; right: -10%;
+      width: 60vw; height: 60vw;
+      background: radial-gradient(circle, rgba(0, 112, 243, 0.1) 0%, transparent 60%);
+      filter: blur(80px);
+    }
+    .grid-overlay {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background-image: 
+        linear-gradient(var(--border-light) 1px, transparent 1px),
+        linear-gradient(90deg, var(--border-light) 1px, transparent 1px);
+      background-size: 40px 40px;
+      opacity: 0.2;
+      mask-image: linear-gradient(to bottom, black 20%, transparent 80%);
+      -webkit-mask-image: linear-gradient(to bottom, black 20%, transparent 80%);
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* Typography */
+    h1, h2, h3, h4 { font-weight: 700; letter-spacing: -0.02em; }
+    h2 { font-size: 2rem; margin-bottom: 1.5rem; text-align: center; }
+    .text-gradient {
+      background: var(--gradient-glow);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    /* Animation Utilities */
+    .fade-up {
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .fade-up.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* ==========================================================================
+       HERO SECTION
+       ========================================================================== */
+    .hero {
+      padding: 120px 0 80px;
+      text-align: center;
+    }
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 16px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border-light);
+      border-radius: 9999px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      margin-bottom: 24px;
+      box-shadow: 0 0 20px rgba(0, 112, 243, 0.2);
+    }
+    .hero-badge span.dot {
+      width: 8px; height: 8px;
+      background-color: var(--accent-1);
+      border-radius: 50%;
+      box-shadow: 0 0 8px var(--accent-1);
+      animation: pulse 2s infinite;
+    }
+    .hero h1 {
+      font-size: clamp(3rem, 6vw, 4.5rem);
+      line-height: 1.1;
+      margin-bottom: 16px;
+      letter-spacing: -0.04em;
+    }
+    .hero p {
+      font-size: clamp(1.1rem, 2vw, 1.25rem);
+      color: var(--text-muted);
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(0.95); opacity: 0.8; }
+      50% { transform: scale(1.1); opacity: 1; box-shadow: 0 0 12px var(--accent-1); }
+      100% { transform: scale(0.95); opacity: 0.8; }
+    }
+
+    /* ==========================================================================
+       ARCHITECTURE DIAGRAM & FLOW
+       ========================================================================== */
+    .diagram-section {
+      padding: 60px 0;
+    }
+    .arch-container {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-lg);
+      padding: 40px;
+      margin-bottom: 40px;
+      box-shadow: inset 0 0 40px rgba(255,255,255,0.02), 0 20px 40px rgba(0,0,0,0.4);
+    }
+    .arch-box {
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-md);
+      padding: 24px;
+      position: relative;
+    }
+    .arch-box.win-pc { background: rgba(255,255,255,0.02); }
+    .arch-box.wsl { background: rgba(255,255,255,0.03); margin-top: 20px; border-color: rgba(255,255,255,0.08); }
+    .arch-title {
+      font-weight: 600;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .arch-title::before {
+      content: ""; width: 12px; height: 12px; background: var(--text-muted); border-radius: 3px; display: inline-block; opacity: 0.5;
+    }
+    
+    .flow-chain {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      margin-top: 16px;
+    }
+    .flow-node {
+      background: rgba(0,0,0,0.5);
+      border: 1px solid rgba(255,255,255,0.1);
+      padding: 12px 24px;
+      border-radius: var(--radius-sm);
+      font-family: var(--font-mono);
+      font-size: 0.9rem;
+      width: 100%;
+      max-width: 400px;
+      text-align: center;
+      transition: all 0.3s ease;
+    }
+    .flow-node.highlight {
+      background: rgba(121, 40, 202, 0.1);
+      border-color: rgba(121, 40, 202, 0.4);
+      color: #fff;
+      box-shadow: 0 0 20px rgba(121, 40, 202, 0.2);
+    }
+    .flow-arrow {
+      color: var(--accent-1);
+      font-size: 1.2rem;
+    }
+    .software-targets {
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      margin-top: 12px;
+      flex-wrap: wrap;
+    }
+    .target-badge {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+    }
+
+    /* Horizontal Pipeline Flow */
+    .horizontal-flow {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      overflow-x: auto;
+      padding: 24px 0;
+      gap: 16px;
+      scrollbar-width: none;
+    }
+    .horizontal-flow::-webkit-scrollbar { display: none; }
+    .h-step {
+      flex: 0 0 auto;
+      background: var(--bg-card);
+      border: 1px solid var(--border-light);
+      padding: 12px 20px;
+      border-radius: var(--radius-md);
+      font-size: 0.9rem;
+      font-weight: 500;
+      white-space: nowrap;
+      position: relative;
+    }
+    .h-step.final {
+      background: linear-gradient(to right, rgba(0, 112, 243, 0.1), rgba(121, 40, 202, 0.1));
+      border-color: rgba(121, 40, 202, 0.3);
+    }
+    .h-arrow {
+      flex: 0 0 auto;
+      color: var(--text-muted);
+      opacity: 0.5;
+    }
+
+    /* ==========================================================================
+       MECE LOGIC TREE
+       ========================================================================== */
+    .logic-tree-section {
+      padding: 60px 0;
+    }
+    .tree-container {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-lg);
+      padding: 40px;
+      overflow-x: auto;
+    }
+    .css-tree {
+      font-family: var(--font-mono);
+      font-size: 0.9rem;
+      line-height: 1.8;
+      color: var(--text-muted);
+    }
+    .css-tree ul {
+      list-style: none;
+      padding-left: 24px;
+      position: relative;
+    }
+    .css-tree ul::before {
+      content: "";
+      position: absolute;
+      top: 0; bottom: 0; left: 0;
+      width: 1px;
+      background: var(--border-light);
+    }
+    .css-tree li {
+      position: relative;
+      padding-left: 16px;
+      margin: 8px 0;
+    }
+    .css-tree li::before {
+      content: "";
+      position: absolute;
+      top: 12px; left: 0;
+      width: 12px; height: 1px;
+      background: var(--border-light);
+    }
+    .css-tree li:last-child::before {
+      background: var(--border-light);
+    }
+    .css-tree li:last-child > ul::before {
+      display: none; /* Hide vertical line for last child's children container */
+    }
+    .tree-node {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 4px;
+      background: transparent;
+      transition: background 0.2s;
+    }
+    .tree-node:hover {
+      background: rgba(255,255,255,0.05);
+      color: var(--text-main);
+    }
+    .tree-root > .tree-node {
+      font-weight: bold;
+      color: var(--accent-3);
+      font-size: 1rem;
+      background: rgba(56, 189, 248, 0.1);
+      border: 1px solid rgba(56, 189, 248, 0.2);
+    }
+    .tree-group > .tree-node {
+      color: var(--text-main);
+      font-weight: 600;
+    }
+
+    /* ==========================================================================
+       SECTION CARDS
+       ========================================================================== */
+    .cards-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 24px;
+      padding: 40px 0;
+    }
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-lg);
+      padding: 32px;
+      position: relative;
+      overflow: hidden;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+    }
+    .card::before {
+      content: "";
+      position: absolute;
+      top: 0; left: 0; right: 0; height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    .card:hover {
+      transform: translateY(-4px);
+      border-color: var(--border-hover);
+      box-shadow: 0 12px 40px -10px rgba(0,0,0,0.5);
+    }
+    .card:hover::before { opacity: 1; }
+    
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .step-number {
+      width: 40px; height: 40px;
+      background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.02));
+      border: 1px solid var(--border-light);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-family: var(--font-mono);
+      color: var(--accent-3);
+    }
+    .card-title {
+      font-size: 1.5rem;
+      font-weight: 600;
+    }
+    
+    /* Code Blocks */
+    .code-window {
+      background: #000;
+      border: 1px solid #222;
+      border-radius: 8px;
+      overflow: hidden;
+      margin-top: 20px;
+    }
+    .code-header {
+      background: #111;
+      padding: 10px 16px;
+      display: flex;
+      gap: 6px;
+      border-bottom: 1px solid #222;
+    }
+    .code-header .dot {
+      width: 10px; height: 10px; border-radius: 50%;
+    }
+    .dot-red { background: #ff5f56; }
+    .dot-yellow { background: #ffbd2e; }
+    .dot-green { background: #27c93f; }
+    
+    pre {
+      margin: 0;
+      padding: 16px;
+      overflow-x: auto;
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      line-height: 1.5;
+      color: #c9d1d9;
+    }
+    code .prompt { color: var(--accent-3); user-select: none; }
+    code .comment { color: #8b949e; }
+    code .command { color: #79c0ff; font-weight: 500; }
+    code .arg { color: #a5d6ff; }
+    code .string { color: #a5d6ff; }
+    code .output { color: #a1a1aa; }
+    code .success { color: var(--accent-3); }
+
+    /* Tables for Troubleshooting */
+    .trouble-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      font-size: 0.9rem;
+    }
+    .trouble-table th, .trouble-table td {
+      padding: 12px 16px;
+      text-align: left;
+      border-bottom: 1px solid var(--border-light);
+    }
+    .trouble-table th {
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-size: 0.8rem;
+    }
+    .trouble-table tr:last-child td { border-bottom: none; }
+    .trouble-table td:first-child { color: var(--accent-3); font-weight: 500; }
+
+    /* ==========================================================================
+       SUPPORTED SOFTWARE GRID
+       ========================================================================== */
+    .software-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 16px;
+      margin-top: 40px;
+    }
+    .software-item {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-light);
+      padding: 16px;
+      border-radius: var(--radius-md);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: background 0.2s;
+    }
+    .software-item:hover {
+      background: rgba(255,255,255,0.05);
+      border-color: rgba(255,255,255,0.15);
+    }
+    .sw-name { font-weight: 600; }
+    .sw-badge {
+      font-size: 0.75rem;
+      background: rgba(16, 185, 129, 0.1);
+      color: var(--accent-3);
+      padding: 4px 8px;
+      border-radius: 12px;
+      font-family: var(--font-mono);
+      border: 1px solid rgba(16, 185, 129, 0.2);
+    }
+    .sw-total {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 24px;
+      background: linear-gradient(135deg, rgba(0, 112, 243, 0.05), rgba(121, 40, 202, 0.05));
+      border: 1px solid rgba(121, 40, 202, 0.2);
+      border-radius: var(--radius-md);
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #fff;
+    }
+
+    /* ==========================================================================
+       FOOTER
+       ========================================================================== */
+    footer {
+      border-top: 1px solid var(--border-light);
+      padding: 60px 0;
+      margin-top: 80px;
+      text-align: center;
+      color: var(--text-muted);
+    }
+    footer a {
+      color: var(--text-main);
+      text-decoration: none;
+      transition: color 0.2s;
+      border-bottom: 1px solid transparent;
+    }
+    footer a:hover {
+      color: var(--accent-1);
+      border-bottom-color: var(--accent-1);
+    }
+    .footer-credits {
+      margin-top: 16px;
+      font-size: 0.9rem;
+    }
+
+    /* Responsive */
+    @media (min-width: 768px) {
+      .cards-grid { grid-template-columns: repeat(2, 1fr); }
+      .card:last-child { grid-column: 1 / -1; }
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-effects">
+    <div class="grid-overlay"></div>
+  </div>
+
+  <div class="container">
+    <!-- Hero Section -->
+    <header class="hero fade-up">
+      <div class="hero-badge">
+        <span class="dot"></span> Windows Native Guide
+      </div>
+      <h1>CLI-Anything <br><span class="text-gradient">on Windows</span></h1>
+      <p>GUI 소프트웨어를 AI Agent가 제어하는 CLI로 자동 변환</p>
+    </header>
+
+    <!-- Horizontal Flow Diagram -->
+    <section class="diagram-section fade-up">
+      <div class="horizontal-flow">
+        <div class="h-step">WSL2 설치</div>
+        <div class="h-arrow">→</div>
+        <div class="h-step">Claude Code</div>
+        <div class="h-arrow">→</div>
+        <div class="h-step">플러그인 설치</div>
+        <div class="h-arrow">→</div>
+        <div class="h-step font-mono">/cli-anything</div>
+        <div class="h-arrow">→</div>
+        <div class="h-step">7단계 파이프라인</div>
+        <div class="h-arrow">→</div>
+        <div class="h-step final">CLI 사용 가능!</div>
+      </div>
+    </section>
+
+    <!-- Architecture Diagram -->
+    <section class="diagram-section fade-up">
+      <h2>System Architecture</h2>
+      <div class="arch-container">
+        <div class="arch-box win-pc">
+          <div class="arch-title">Windows PC</div>
+          <div class="arch-box wsl">
+            <div class="arch-title">WSL2 (Ubuntu)</div>
+            <div class="flow-chain">
+              <div class="flow-node">Python &rarr; Claude Code</div>
+              <div class="flow-arrow">&darr;</div>
+              <div class="flow-node highlight">CLI-Anything Plugin</div>
+              <div class="flow-arrow" style="font-size: 0.8rem; margin: -4px 0;">제어</div>
+              <div class="software-targets">
+                <span class="target-badge">GIMP</span>
+                <span class="target-badge">Blender</span>
+                <span class="target-badge">LibreOffice</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- MECE Logic Tree -->
+    <section class="logic-tree-section fade-up">
+      <h2>구조 요약 <span style="font-weight:400; color:var(--text-muted); font-size:1.2rem;">(Logic Tree)</span></h2>
+      <div class="tree-container">
+        <div class="css-tree">
+          <ul>
+            <li class="tree-root">
+              <span class="tree-node">CLI-Anything 윈도우 사용</span>
+              <ul>
+                <li class="tree-group">
+                  <span class="tree-node">1. 환경 준비 (Environment)</span>
+                  <ul>
+                    <li><span class="tree-node">1.1 WSL2 설치</span></li>
+                    <li><span class="tree-node">1.2 Python 3.10+ 구성</span></li>
+                    <li><span class="tree-node">1.3 Node.js 설치</span></li>
+                  </ul>
+                </li>
+                <li class="tree-group">
+                  <span class="tree-node">2. 도구 설치 (Installation)</span>
+                  <ul>
+                    <li><span class="tree-node">2.1 Claude Code 설치 & 로그인</span></li>
+                    <li><span class="tree-node">2.2 CLI-Anything 플러그인</span></li>
+                    <li><span class="tree-node">2.3 대상 소프트웨어 (GIMP/Blender/LibreOffice)</span></li>
+                  </ul>
+                </li>
+                <li class="tree-group">
+                  <span class="tree-node">3. CLI 생성 (Generation)</span>
+                  <ul>
+                    <li><span class="tree-node">3.1 /cli-anything 명령어 실행</span></li>
+                    <li>
+                      <span class="tree-node">3.2 7단계 자동 파이프라인</span>
+                      <ul>
+                        <li><span class="tree-node">Analyze &rarr; Design &rarr; Implement</span></li>
+                        <li><span class="tree-node">Plan Tests &rarr; Write Tests</span></li>
+                        <li><span class="tree-node">Document &rarr; Publish</span></li>
+                      </ul>
+                    </li>
+                    <li><span class="tree-node">3.3 /cli-anything-refine 반복 개선</span></li>
+                  </ul>
+                </li>
+                <li class="tree-group">
+                  <span class="tree-node">4. 활용 (Usage)</span>
+                  <ul>
+                    <li><span class="tree-node">4.1 직접 CLI 명령어</span></li>
+                    <li><span class="tree-node">4.2 Interactive REPL 모드</span></li>
+                    <li><span class="tree-node">4.3 JSON 출력 (AI Agent 연동)</span></li>
+                  </ul>
+                </li>
+                <li class="tree-group">
+                  <span class="tree-node">5. 문제 해결 (Troubleshooting)</span>
+                  <ul>
+                    <li><span class="tree-node">5.1 WSL 경로 문제 (/mnt/c/...)</span></li>
+                    <li><span class="tree-node">5.2 GUI 앱 표시 (WSLg/VcXsrv)</span></li>
+                    <li><span class="tree-node">5.3 권한 & 버전 이슈</span></li>
+                  </ul>
+                </li>
+              </ul>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- Cards Section -->
+    <section class="cards-section">
+      <div class="cards-grid">
+        
+        <!-- Card 1 -->
+        <div class="card fade-up">
+          <div class="card-header">
+            <div class="step-number">1</div>
+            <h3 class="card-title">환경 준비</h3>
+          </div>
+          <p class="text-muted">Windows 환경에서 완벽한 호환성을 위해 WSL2(Ubuntu)를 사용합니다.</p>
+          <div class="code-window">
+            <div class="code-header"><span class="dot dot-red"></span><span class="dot dot-yellow"></span><span class="dot dot-green"></span></div>
+            <pre><code><span class="comment">PowerShell (관리자):</span>
+<span class="prompt">&gt;</span> <span class="command">wsl</span> <span class="arg">--install</span>
+
+<span class="comment">Ubuntu (WSL2):</span>
+<span class="prompt">$</span> <span class="command">sudo</span> apt update <span class="arg">&amp;&amp;</span> <span class="command">sudo</span> apt upgrade -y
+<span class="prompt">$</span> <span class="command">python3</span> <span class="arg">--version</span>    <span class="comment"># 3.12.x (Ubuntu 24.04)</span>
+<span class="prompt">$</span> <span class="command">curl</span> <span class="arg">-fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -</span>
+<span class="prompt">$</span> <span class="command">sudo</span> apt install -y nodejs python3-pip python3-venv</code></pre>
+          </div>
+        </div>
+
+        <!-- Card 2 -->
+        <div class="card fade-up">
+          <div class="card-header">
+            <div class="step-number">2</div>
+            <h3 class="card-title">도구 설치</h3>
+          </div>
+          <p class="text-muted">Claude Code 및 플러그인, 그리고 대상 소프트웨어를 설치합니다.</p>
+          <div class="code-window">
+            <div class="code-header"><span class="dot dot-red"></span><span class="dot dot-yellow"></span><span class="dot dot-green"></span></div>
+            <pre><code><span class="comment"># Claude Code 설치</span>
+<span class="prompt">$</span> <span class="command">npm</span> install -g @anthropic-ai/claude-code
+<span class="prompt">$</span> <span class="command">claude</span>    <span class="comment"># 로그인 (OAuth)</span>
+
+<span class="comment"># CLI-Anything 플러그인</span>
+<span class="prompt">&gt;</span> <span class="command">/plugin</span> marketplace add HKUDS/CLI-Anything
+<span class="prompt">&gt;</span> <span class="command">/plugin</span> install cli-anything
+
+<span class="comment"># 대상 소프트웨어 (WSL 안에 설치 권장)</span>
+<span class="prompt">$</span> <span class="command">sudo</span> apt install gimp blender libreoffice</code></pre>
+          </div>
+        </div>
+
+        <!-- Card 3 -->
+        <div class="card fade-up">
+          <div class="card-header">
+            <div class="step-number">3</div>
+            <h3 class="card-title">CLI 생성</h3>
+          </div>
+          <p class="text-muted">7단계 파이프라인을 통해 GUI 프로그램을 CLI로 자동 변환합니다.</p>
+          <div class="code-window">
+            <div class="code-header"><span class="dot dot-red"></span><span class="dot dot-yellow"></span><span class="dot dot-green"></span></div>
+            <pre><code><span class="comment"># 한 줄로 CLI 생성</span>
+<span class="prompt">&gt;</span> <span class="command">/cli-anything</span> ./gimp
+
+<span class="comment"># 7단계 파이프라인 자동 실행:
+# Analyze -&gt; Design -&gt; Implement
+# Plan Tests -&gt; Write Tests
+# Document -&gt; Publish
+
+# 반복 개선</span>
+<span class="prompt">&gt;</span> <span class="command">/cli-anything-refine</span> ./gimp</code></pre>
+          </div>
+        </div>
+
+        <!-- Card 4 -->
+        <div class="card fade-up">
+          <div class="card-header">
+            <div class="step-number">4</div>
+            <h3 class="card-title">활용</h3>
+          </div>
+          <p class="text-muted">직접 명령어를 실행하거나 REPL 모드, JSON 출력을 통해 AI Agent와 연동합니다.</p>
+          <div class="code-window">
+            <div class="code-header"><span class="dot dot-red"></span><span class="dot dot-yellow"></span><span class="dot dot-green"></span></div>
+            <pre><code><span class="comment"># CLI 명령어</span>
+<span class="prompt">$</span> <span class="command">cli-anything-gimp</span> <span class="arg">--help</span>
+<span class="prompt">$</span> <span class="command">cli-anything-gimp</span> project new <span class="arg">--width</span> 1920 <span class="arg">--height</span> 1080
+
+<span class="comment"># REPL 모드</span>
+<span class="prompt">$</span> <span class="command">cli-anything-gimp</span>
+<span class="output">gimp&gt;</span> <span class="command">layer</span> new <span class="arg">--name</span> <span class="string">"Background"</span>
+<span class="success">✓ Created layer: Background</span>
+
+<span class="comment"># JSON 출력 (AI Agent 연동)</span>
+<span class="prompt">$</span> <span class="command">cli-anything-gimp</span> <span class="arg">--json</span> project new
+<span class="output">&rarr; {"status": "ok", "project": {...}}</span></code></pre>
+          </div>
+        </div>
+
+        <!-- Card 5 -->
+        <div class="card fade-up">
+          <div class="card-header">
+            <div class="step-number">5</div>
+            <h3 class="card-title">문제 해결 (Troubleshooting)</h3>
+          </div>
+          <table class="trouble-table">
+            <thead>
+              <tr>
+                <th>문제</th>
+                <th>해결 방법</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>WSL 브라우저 안 열림</td>
+                <td>URL 복사 &rarr; Windows 브라우저에 붙여넣기</td>
+              </tr>
+              <tr>
+                <td>Windows 앱 경로</td>
+                <td><code style="font-family: var(--font-mono); background: #222; padding: 2px 4px; border-radius: 4px;">/mnt/c/Program Files/...</code> 또는 WSL 안에 설치</td>
+              </tr>
+              <tr>
+                <td>GUI 앱 표시</td>
+                <td>WSLg (Win11) 또는 VcXsrv 설치</td>
+              </tr>
+              <tr>
+                <td>pip 권한 오류</td>
+                <td><code style="font-family: var(--font-mono); background: #222; padding: 2px 4px; border-radius: 4px;">python3 -m venv .venv && source .venv/bin/activate</code></td>
+              </tr>
+              <tr>
+                <td>Claude Code 버전</td>
+                <td><code style="font-family: var(--font-mono); background: #222; padding: 2px 4px; border-radius: 4px;">claude --version</code> &rarr; 3.x 이상 권장</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- Supported Software -->
+    <section class="diagram-section fade-up">
+      <h2 style="margin-bottom: 8px;">Supported Software</h2>
+      <p style="text-align: center; color: var(--text-muted); margin-bottom: 32px;">변환 검증이 완료된 대표 소프트웨어 목록</p>
+      <div class="software-grid">
+        <div class="software-item"><span class="sw-name">GIMP</span> <span class="sw-badge">107 tests ✓</span></div>
+        <div class="software-item"><span class="sw-name">Blender</span> <span class="sw-badge">208 tests ✓</span></div>
+        <div class="software-item"><span class="sw-name">Inkscape</span> <span class="sw-badge">202 tests ✓</span></div>
+        <div class="software-item"><span class="sw-name">Audacity</span> <span class="sw-badge">161 tests ✓</span></div>
+        <div class="software-item"><span class="sw-name">LibreOffice</span> <span class="sw-badge">158 tests ✓</span></div>
+        <div class="software-item"><span class="sw-name">OBS Studio</span> <span class="sw-badge">153 tests ✓</span></div>
+        <div class="software-item"><span class="sw-name">Kdenlive</span> <span class="sw-badge">155 tests ✓</span></div>
+        <div class="software-item"><span class="sw-name">Shotcut</span> <span class="sw-badge">154 tests ✓</span></div>
+        <div class="software-item"><span class="sw-name">Draw.io</span> <span class="sw-badge">138 tests ✓</span></div>
+        <div class="software-item"><span class="sw-name">Zoom</span> <span class="sw-badge">22 tests ✓</span></div>
+        <div class="software-item sw-total">Total: 1,508 tests ✓ 100% pass rate</div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+      <p><a href="https://github.com/HKUDS/CLI-Anything" target="_blank" rel="noopener noreferrer">GitHub Repository : HKUDS/CLI-Anything</a></p>
+      <p class="footer-credits">Created by HKUDS (HKU Data Intelligence Lab)</p>
+    </footer>
+  </div>
+
+  <script>
+    // Intersection Observer for scroll fade-up animations
+    document.addEventListener("DOMContentLoaded", () => {
+      const observerOptions = {
+        root: null,
+        rootMargin: '0px',
+        threshold: 0.1
+      };
+
+      const observer = new IntersectionObserver((entries, observer) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('visible');
+            observer.unobserve(entry.target);
+          }
+        });
+      }, observerOptions);
+
+      document.querySelectorAll('.fade-up').forEach((el) => {
+        observer.observe(el);
+      });
+    });
+  </script>
+</body>
+</html>
